@@ -417,25 +417,9 @@ Outputs go to `data/benchmark/benchmark.json` and `benchmark.png`. Running the b
 
 ---
 
-## 15. Troubleshooting
-
-| Symptom | Likely cause and fix |
-|---|---|
-| "Hardware connection failed" | Wrong port. Set `serial.port` in `config.py` or let `auto_detect` find the Arduino. Close the Arduino IDE serial monitor. |
-| Motors do not move in real mode | Pin numbers in the firmware do not match the wiring. Check section 10. |
-| Robot stops after about 2 seconds | The watchdog fired. The PC is not sending heartbeats. Check the cable and that no other program holds the port. |
-| Space key does nothing | `pynput` is missing or the OS blocked global hotkeys. Use the on-screen e-stop button. |
-| Korean text appears as boxes | No Korean font. Install NanumGothic or Noto Sans CJK KR. |
-| "Headless mode supports only --sim" | Headless runs need simulation mode. |
-| Calibration aborts | Sensor span or motor travel is below the validity limit. Check the glove fit and wire tension. |
-| Quick start shows a stale warning | The saved calibration is older than 14 days. Run full mode again. |
-
----
-
-## 16. Roadmap
+## 15. Roadmap
 
 1. Measure the prototype: e-stop delay, communication-loss stop time and angle repeatability.
 2. Lower the speed floor for patients with low tolerance.
 3. Add a second angle sensor to reduce angle error.
-4. Test with a physical mannequin hand, then with healthy volunteers under ethics approval.
-5. Pilot at one or two community sites before wider deployment.
+4. Pilot at one or two community sites before wider deployment.
