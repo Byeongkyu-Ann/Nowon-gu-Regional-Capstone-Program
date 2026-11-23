@@ -1,425 +1,424 @@
-**English** | [한국어](README.ko.md)
+[English](README.md) | **한국어**
 
-# Re:Hand — Safety-Constrained Control Software for a Wearable Finger Rehabilitation Robot
+# Re:Hand — 착용형 손가락 재활 로봇의 안전 제약 제어 소프트웨어
 
-Re:Hand is the control software for a low-cost, wire-driven soft glove for finger rehabilitation.
-It is a continuation of the **H.O.P.E Hand** project. The hardware idea is the same: UHMWPE tendons pulled by two servo motors, a flex sensor and an FSR grip module, controlled by an Arduino Nano. The main change is the controller. The earlier LinUCB speed selector is replaced by **SafeLadderTS**, a safe-constrained Thompson sampling controller that treats pain as a safety constraint instead of only a reward signal.
+Re:Hand는 저비용 와이어 구동식 소프트 글러브형 손가락 재활 로봇을 위한 제어 소프트웨어입니다.
+**H.O.P.E Hand** 프로젝트를 바탕으로 개발했으며, 하드웨어 구성은 기존과 동일합니다. UHMWPE 와이어를 서보모터 2개가 당기고, 플렉스 센서와 FSR 근력 모듈로 측정하며, Arduino Nano가 제어합니다. 이번 프로젝트의 핵심 변경 사항은 제어 알고리즘입니다. 기존의 LinUCB 기반 속도 선택기를 **SafeLadderTS**로 대체했습니다. SafeLadderTS는 안전 제약을 적용한 톰슨 샘플링 알고리즘으로, 통증을 단순한 보상 신호가 아닌 속도 선택을 제한하는 안전 조건으로 반영합니다.
 
-The project was built for the Kwangwoon University Regional Capstone Design program (target site: Nowon-gu, Seoul).
-
-
----
-
-## Table of Contents
-
-1. [Features](#1-features)
-2. [System Overview](#2-system-overview)
-3. [Repository Structure](#3-repository-structure)
-4. [Installation](#4-installation)
-5. [Quick Start](#5-quick-start)
-6. [Simulation Mode and Real Hardware Mode](#6-simulation-mode-and-real-hardware-mode)
-7. [Session Flow](#7-session-flow)
-8. [Safety Design](#8-safety-design)
-9. [SafeLadderTS Algorithm](#9-safeladderts-algorithm)
-10. [Serial Protocol and Firmware](#10-serial-protocol-and-firmware)
-11. [Configuration Reference](#11-configuration-reference)
-12. [Outputs and Data Files](#12-outputs-and-data-files)
-13. [Benchmark](#13-benchmark)
-14. [Limitations](#14-limitations)
-15. [Troubleshooting](#15-troubleshooting)
-16. [Roadmap](#16-roadmap)
+이 소프트웨어는 광운대학교 지역밀착형 캡스톤 디자인 프로그램의 일환으로 개발했으며, 대상 지역은 서울시 노원구입니다.
 
 ---
 
-## 1. Features
+## 목차
 
-| Area | What it does |
+1. [주요 기능](#1-주요-기능)
+2. [시스템 개요](#2-시스템-개요)
+3. [저장소 구조](#3-저장소-구조)
+4. [설치](#4-설치)
+5. [빠른 시작](#5-빠른-시작)
+6. [시뮬레이션 모드와 실제 하드웨어 모드](#6-시뮬레이션-모드와-실제-하드웨어-모드)
+7. [세션 흐름](#7-세션-흐름)
+8. [안전 설계](#8-안전-설계)
+9. [SafeLadderTS 알고리즘](#9-safeladderts-알고리즘)
+10. [시리얼 프로토콜과 펌웨어](#10-시리얼-프로토콜과-펌웨어)
+11. [설정 레퍼런스](#11-설정-레퍼런스)
+12. [출력과 데이터 파일](#12-출력과-데이터-파일)
+13. [벤치마크](#13-벤치마크)
+14. [한계](#14-한계)
+15. [문제 해결](#15-문제-해결)
+16. [로드맵](#16-로드맵)
+
+---
+
+## 1. 주요 기능
+
+| 구분 | 설명 |
 |---|---|
-| Control | SafeLadderTS selects the motor speed per movement direction and range-of-motion zone. |
-| Safety | Three emergency-stop paths, a heartbeat watchdog, slew-limited servos and automatic rollback after pain. |
-| Run modes | Full mode runs calibration and then therapy. Quick-start mode skips calibration and uses the patient's saved values. |
-| Patient profiles | Calibration values, learned posteriors and safety state are saved per patient in JSON. |
-| UI | PyQt5 clinician interface with a guidance card, a live finger-position gauge, live traces and a large emergency-stop button. |
-| Analytics | A 9-panel dashboard PNG, an Excel report and a JSON summary are written after every session. |
-| Simulation | A virtual robot and a virtual patient run the whole pipeline without hardware. |
-| Benchmark | Compares SafeLadderTS with LinUCB, two ablations and three fixed-speed policies. |
+| 제어 | SafeLadderTS가 움직임 방향과 가동범위 내 구간에 따라 적절한 모터 속도를 선택합니다. |
+| 안전 | 키보드·UI·하드웨어 버튼을 통한 긴급정지, 하트비트 감시, 서보 속도 변화 제한, 통증 발생 후 속도 하향 기능을 지원합니다. |
+| 실행 모드 | 전체 모드에서는 캘리브레이션을 마친 뒤 치료를 시작합니다. 빠른 시작 모드에서는 캘리브레이션을 생략하고 기존에 저장된 환자 프로필을 불러옵니다. |
+| 환자 프로필 | 캘리브레이션 값, 학습된 사후분포, 안전 상태를 환자별 JSON으로 저장합니다. |
+| UI | PyQt5 기반 UI를 제공합니다. UI에는 안내 카드, 손가락 위치 게이지와 실시간 추이 그래프, 긴급정지 버튼이 배치되어 있습니다. |
+| 분석 | 각 세션이 종료되면 9개 패널로 구성된 대시보드 이미지(PNG), 엑셀 보고서, JSON 요약 파일을 저장합니다. |
+| 시뮬레이션 | 실제 하드웨어 없이 가상 로봇과 환자 모델을 이용해 전체 세션을 실행할 수 있습니다. |
+| 벤치마크 | SafeLadderTS의 성능을 LinUCB, 두 가지 구성요소 제거 실험, 세 가지 고정 속도 정책과 비교합니다. |
 
 ---
 
-## 2. System Overview
+## 2. 시스템 개요
 
 ```
- ┌────────────── Wearable module (glove) ──────────────┐        ┌────────────────── PC software (Python) ──────────────────┐
- │                                                     │        │                                                          │
- │  Servo x2 (flexion / extension)  <──┐               │        │  Serial layer (hardware.py)                              │
- │  Flex sensor ─────────────────────> │ Arduino Nano  │  USB   │     │  DATA / EVT in, M / STOP / BUZ / HB out            │
- │  FSR grip module ─────────────────> │ firmware      │<──────>│     v                                                    │
- │  E-stop button + buzzer <─────────> │ (.ino)        │ 115200 │  Session controller (session.py)                         │
- │                                     └───────────────┘  bps   │     │  calibration, therapy, e-stop, rollback            │
- └─────────────────────────────────────────────────────┘        │     v                                                    │
-                                                                │  SafeLadderTS (agent.py) <-> Profile store (store.py)   │
-                                                                │     │                                                    │
-                                                                │     v                                                    │
-                                                                │  UI (ui.py)   Analytics (analytics.py)   Logs (records)  │
-                                                                └──────────────────────────────────────────────────────────┘
+ ┌──────────── 웨어러블 모듈 (장갑) ────────────┐        ┌──────────────── PC 소프트웨어 (Python) ────────────────┐
+ │                                              │        │                                                        │
+ │  서보 2개 (굴곡 / 신전)  <──┐                │        │  시리얼 계층 (hardware.py)                             │
+ │  플렉스 센서 ────────────> │ Arduino Nano   │  USB   │     │  DATA / EVT 수신, M / STOP / BUZ / HB 송신       │
+ │  FSR 근력 모듈 ──────────> │ 펌웨어 (.ino)  │<──────>│     v                                                  │
+ │  비상정지 버튼 + 부저 <──> │                │ 115200 │  세션 제어기 (session.py)                              │
+ │                            └────────────────┘  bps   │     │  캘리브레이션, 치료, 비상정지, 속도 복귀         │
+ └──────────────────────────────────────────────┘        │     v                                                  │
+                                                         │  SafeLadderTS (agent.py) <-> 프로필 저장소 (store.py) │
+                                                         │     │                                                  │
+                                                         │     v                                                  │
+                                                         │  UI (ui.py)   분석 (analytics.py)   기록 (records)     │
+                                                         └────────────────────────────────────────────────────────┘
 ```
 
-The session logic talks only to the `HardwareInterface` abstraction. `SerialHardware` drives the real Arduino. `SimulatedHardware` replaces both the robot and the patient. The same session code runs in both cases.
+세션 로직은 `HardwareInterface` 추상화 계층을 통해서만 하드웨어와 통신합니다. `SerialHardware`는 실제 Arduino와 통신하고, `SimulatedHardware`는 로봇과 환자의 동작을 소프트웨어로 모사합니다. 두 모드 모두 동일한 세션 제어 코드를 사용합니다.
 
 ---
 
-## 3. Repository Structure
+## 3. 저장소 구조
 
 ```
 rehab_system/
-├── main.py              Entry point. UI mode and headless console mode.
-├── config.py            All settings. Contains the SIMULATION_MODE switch.
-├── session.py           Session state machine, safety logic, emergency stop, rollback.
-├── agent.py             SafeLadderTS (proposed) and LinUCBAgent (baseline for comparison).
+├── main.py              프로그램 실행 진입점. UI 모드와 헤드리스(콘솔) 모드를 지원합니다.
+├── config.py            전체 설정을 관리하며, `SIMULATION_MODE` 전환 옵션을 포함합니다.
+├── session.py           세션 상태 관리, 안전 제어, 비상정지 및 속도 복귀 로직을 담당합니다.
+├── agent.py             SafeLadderTS(제안)와 LinUCBAgent(비교용 기준선).
 ├── hardware.py          HardwareInterface, SerialHardware, SimulatedHardware.
-├── simulation.py        Virtual patient model (sigmoid pain hazard).
-├── store.py             Per-patient profile save and load.
-├── records.py           Session log data classes.
-├── analytics.py         9-panel dashboard, Excel report and JSON summary.
-├── ui.py                PyQt5 clinician interface.
-├── benchmark.py         Algorithm comparison on a simulated patient.
+├── simulation.py        시그모이드 함수 기반 통증 위험률을 사용하는 가상 환자 모델입니다.
+├── store.py             환자별 프로필을 저장하고 불러옵니다.
+├── records.py           세션 기록을 위한 데이터 클래스를 정의합니다.
+├── analytics.py         9패널 대시보드와 엑셀 보고서, JSON 요약 파일을 생성합니다.
+├── ui.py                PyQt5 기반 사용자 인터페이스입니다.
+├── benchmark.py         가상 환자 모델을 이용해 알고리즘 성능을 비교합니다.
 ├── firmware/
-│   └── rehab_controller.ino   Arduino Nano firmware.
+│   └── rehab_controller.ino   Arduino Nano 펌웨어.
 └── data/
-    ├── profiles/<patient>.json            Saved calibration and learning state.
-    ├── reports/<patient>/<timestamp>/     Session outputs.
-    └── benchmark/                         benchmark.json and benchmark.png.
+    ├── profiles/<환자>.json               저장된 캘리브레이션과 학습 상태.
+    ├── reports/<환자>/<시각>/             세션 출력.
+    └── benchmark/                         benchmark.json, benchmark.png.
 ```
 
 ---
 
-## 4. Installation
+## 4. 설치 및 환경 설정
 
-Python 3.9 or newer is required.
+Python 3.9 이상이 필요합니다.
 
 ```bash
 pip install numpy pandas matplotlib openpyxl PyQt5 pyserial pynput
 ```
 
-| Package | Used for |
+| 패키지 | 주요 용도 |
 |---|---|
-| numpy, pandas | Numerics and the Excel report tables |
-| matplotlib | Dashboard and benchmark figures |
-| openpyxl | Excel export |
-| PyQt5 | Clinician UI |
-| pyserial | Arduino communication (real mode only) |
-| pynput | Global Space-key emergency stop |
+| numpy, pandas | 수치 연산 및 엑셀 보고서 데이터 처리 |
+| matplotlib | 대시보드 및 벤치마크 결과 시각화 |
+| openpyxl | 엑셀 저장 |
+| PyQt5 | 임상용 UI |
+| pyserial | Arduino와의 시리얼 통신(실제 하드웨어 모드에서 사용) |
+| pynput | 전역 Space 키 입력을 통한 긴급정지 |
 
-Simulation mode with `--headless` needs only `numpy`, `pandas`, `matplotlib` and `openpyxl`. The UI also needs PyQt5.
+`--headless` 시뮬레이션은 `numpy`, `pandas`, `matplotlib`, `openpyxl`만 있으면 됩니다. UI에는 PyQt5도 필요합니다.
 
-The dashboard font is chosen from Malgun Gothic, AppleGothic, NanumGothic or Noto Sans CJK KR. If none is installed, Korean labels fall back to DejaVu Sans and may show as empty boxes.
+대시보드에는 Malgun Gothic, AppleGothic, NanumGothic, Noto Sans CJK KR 순으로 사용 가능한 글꼴을 적용합니다. 해당 글꼴을 찾지 못하면 DejaVu Sans를 사용합니다. 이 경우 환경에 따라 한글이 정상적으로 표시되지 않을 수 있습니다.
 
 ---
 
-## 5. Quick Start
+## 5. 실행 방법
 
 ```bash
-# UI in simulation mode (no hardware needed)
+# 시뮬레이션 모드 UI (하드웨어 불필요)
 python main.py --sim
 
-# UI with the real robot
+# 실제 로봇과 UI
 python main.py --real
 
-# Console test: quick-start mode for patient P1, 10 cycles, accelerated virtual time
+# 콘솔 테스트: 환자 P1, 빠른 시작, 10사이클, 가상 시간 가속
 python main.py --sim --headless --mode quick --patient P1 --cycles 10
 
-# Console test: full calibration and therapy
+# 콘솔 테스트: 전체 캘리브레이션과 치료
 python main.py --sim --headless --mode full --cycles 20
 
-# Algorithm benchmark
+# 알고리즘 벤치마크
 python benchmark.py --cycles 40 --seeds 100
 ```
 
-Command-line options of `main.py`:
+`main.py` 옵션:
 
-| Option | Meaning |
+| 옵션 | 의미 |
 |---|---|
-| `--sim` / `--real` | Force simulation or real hardware. Overrides `config.SIMULATION_MODE`. |
-| `--headless` | Run without the UI. Supported only with `--sim`. |
-| `--mode full\|quick` | Calibration plus therapy, or saved values only. |
-| `--patient ID` | Patient identifier. Selects the profile file. |
-| `--cycles N` | Stop after N cycles. |
-| `--minutes M` | Session length in minutes. The default is 30. |
-| `--speedup X` | Virtual time acceleration in headless mode. The default is 40. |
+| `--sim` / `--real` | 시뮬레이션 또는 실제 하드웨어를 강제합니다. `config.SIMULATION_MODE`보다 우선합니다. |
+| `--headless` | UI 없이 실행합니다. `--sim`에서만 지원합니다. |
+| `--mode full\|quick` | 캘리브레이션 후 치료, 또는 저장값만 사용합니다. |
+| `--patient ID` | 환자 식별자. 프로필 파일을 정합니다. |
+| `--cycles N` | N사이클 후 종료합니다. |
+| `--minutes M` | 세션 길이(분). 기본값은 30입니다. |
+| `--speedup X` | 헤드리스 가상 시간 배속. 기본값은 40입니다. |
 
 ---
 
-## 6. Simulation Mode and Real Hardware Mode
+## 6. 시뮬레이션 모드와 실제 하드웨어 모드
 
-The default switch is in `config.py`:
+기본 스위치는 `config.py`에 있습니다.
 
 ```python
-SIMULATION_MODE: bool = False   # True: virtual robot and patient. False: Arduino over serial.
+SIMULATION_MODE: bool = False   # True: 가상 로봇·환자. False: 시리얼로 Arduino 연결.
 ```
 
-The command-line options `--sim` and `--real` override it. In simulation mode:
+명령행에서 `--sim` 또는 `--real`을 지정하면 설정 파일의 값보다 해당 옵션이 우선 적용됩니다. 시뮬레이션 모드에서는 다음과 같이 동작합니다.
 
-- The virtual robot reproduces servo motion and sensor readings so the full session logic runs unchanged.
-- The virtual patient has a position-dependent speed tolerance. It is lower near both ends of the range.
-- Pain starts with a sigmoid hazard when the speed exceeds the tolerance. The tolerance rises slowly as safe cycles accumulate.
-- A virtual patient presses the pain button by itself when `sim.auto_patient` is `True`.
-- Calibration confirm prompts can be skipped with `sim.auto_confirm`.
+- 가상 로봇이 서보의 움직임과 센서값을 모사하므로 실제 하드웨어 모드와 동일한 세션 로직을 실행할 수 있습니다.
+- 가상 환자는 위치에 따라 속도 허용치가 다릅니다. 가동범위 양 끝에서 허용치가 낮습니다.
+- 선택한 속도가 허용치를 초과하면 시그모이드 함수로 계산한 확률에 따라 통증이 발생합니다. 안전하게 사이클을 완료할수록 허용 속도는 점진적으로 높아집니다.
+- `sim.auto_patient`가 `True`이면 가상 환자가 스스로 통증 버튼을 누릅니다.
+- `sim.auto_confirm`으로 캘리브레이션 확인 버튼을 자동으로 넘길 수 있습니다.
 
-The patient model is an **assumption for algorithm comparison**. It is not clinical data.
+가상 환자 모델은 **알고리즘 간 성능 비교를 위해 설정한 시뮬레이션 환경**입니다. 실제 환자 데이터에 기반한 모델은 아닙니다.
 
 ---
 
-## 7. Session Flow
+## 7. 세션 흐름
 
 ```
-IDLE -> CALIBRATION -> READY -> THERAPY -> FINISHED
-                                   |
-                                   +----> ABORTED   (emergency stop, comm loss, software error)
+대기 -> 캘리브레이션 -> 치료 준비 -> 치료 중 -> 종료
+                                        |
+                                        +----> 중단   (비상정지, 통신 두절, 소프트웨어 오류)
 ```
 
-**Full mode**
+**전체 모드**
 
-1. Motor range. Motor 2 pulls the extension wire until the operator confirms that the hand is fully open. Motor 1 then pulls the flexion wire until the fist is fully closed. Both pulls are slow (20 deg/s).
-2. Sensor baselines. Each motor moves to its limit and the flex sensor is averaged over 1 s at the open and the closed position.
-3. Grip force. The patient squeezes the FSR module for 5 s. The mean FSR value sets the base speed `k0` (section 9).
-4. Validity checks. Calibration aborts if the motor travel is below 10 deg or the flex sensor span is below 60 ADC counts.
-5. The profile is saved and therapy cycles start. They run until the time limit or `max_cycles`.
+1. 모터 가동범위 측정. 먼저 2번 모터가 신전 와이어를 당깁니다. 운영자가 손가락이 완전히 펴진 것을 확인하면, 이어서 1번 모터가 굴곡 와이어를 당겨 주먹을 쥔 상태까지 이동합니다. 두 동작은 모두 20 deg/s의 저속으로 수행합니다.
+2. 센서 기준값 측정. 각 모터를 가동범위의 양 끝 위치로 이동시키고, 손가락을 편 상태와 굽힌 상태에서 플렉스 센서 값을 각각 1초 동안 측정해 평균을 계산합니다.
+3. 악력 측정. 환자가 5초 동안 FSR 모듈을 쥐면, 측정값의 평균을 바탕으로 기본 속도 `k0`를 설정합니다(9장 참조).
+4. 유효성 검사. 모터 이동량이 10 deg 미만이거나 플렉스 센서의 변화량이 60 ADC 카운트 미만이면 측정값이 유효하지 않은 것으로 판단하고 캘리브레이션을 중단합니다.
+5. 측정 결과를 환자 프로필에 저장한 뒤 치료를 시작합니다. 치료는 설정된 세션 시간 또는 `max_cycles`에 도달할 때까지 진행합니다.
 
-**Quick-start mode**
+**빠른 시작 모드**
 
-1. Load `data/profiles/<patient>.json`.
-2. A warning appears if the calibration is older than 14 days.
-3. With no saved profile the system starts with conservative defaults: 45 deg travel on both motors, ROM 0.6 and base speed 15 deg/s.
-4. The first 2 cycles use a lowered speed cap (`warmup_max_arm = 1`).
+1. `data/profiles/<환자>.json`을 불러옵니다.
+2. 마지막 캘리브레이션 이후 14일이 지났다면 경고를 표시합니다.
+3. 저장된 프로필이 없는 경우에는 보수적인 기본값을 적용합니다. 두 모터의 이동량은 45 deg, 가동범위 비율은 0.6, 기본 속도는 15 deg/s입니다.
+4. 초기 2사이클 동안은 속도 상한을 낮춰 동작합니다(`warmup_max_arm = 1`).
 
-**One therapy cycle** has a bend phase and an extend phase. Each phase is divided into 4 zones. At every zone boundary the agent chooses a speed. The patient reports the outcome through the pain button:
+**치료 사이클**은 굴곡 단계와 신전 단계로 구성되며, 각 단계는 다시 4개 구간으로 나뉩니다. 에이전트는 각 구간이 시작될 때 적용할 속도를 선택하고, 환자는 통증 버튼을 눌러 동작에 대한 반응을 전달합니다.
 
-| Level | Meaning | System response |
+| 단계 | 사용자 반응 | 시스템 동작 |
 |---|---|---|
-| 0 | No pain | Counts as a safe pass. |
-| 1 | Discomfort | Soft penalty. The safety score drops by 20%. |
-| 2 | Pain | Immediate rollback to 30% speed, a lower speed cap for the zone and a 3-cycle cooldown. |
+| 0 | 통증 없음 | 안전 통과로 기록합니다. |
+| 1 | 뻐근함 | 약한 벌점. 안전 점수가 20% 줄어듭니다. |
+| 2 | 통증 | 즉시 30% 속도로 복귀하고, 해당 구간 속도 상한을 낮추며, 3사이클 쿨다운에 들어갑니다. |
 
-After each cycle the range of motion grows by 2% if no level-2 pain occurred. Level-2 pain resets it to the starting ratio.
+사이클이 끝날 때 통증 2가 없었다면 가동범위가 2% 늘어납니다. 통증 2가 있었다면 시작 비율로 초기화됩니다.
 
 ---
 
-## 8. Safety Design
+## 8. 안전 설계
 
-| Mechanism | Detail |
+| 장치 | 내용 |
 |---|---|
-| Emergency stop, 3 paths | Space key (global hotkey), on-screen button, and the physical robot button. All three stop the motors, sound the buzzer for 2,500 ms, return the glove to a safe position and save a report. |
-| Hardware e-stop | The Arduino stops the servos, sounds the buzzer and sends `EVT,ESTOP` on its own. It does not wait for the PC. The input is debounced for 20 ms. |
-| Heartbeat watchdog | The PC sends `HB` every 0.5 s. If the Arduino hears nothing for 2,000 ms it stops the servos and sounds the buzzer. The PC also treats 2 s of silence as a communication loss. |
-| Slew limiting | The firmware updates servo angles every 10 ms and never exceeds the commanded speed. |
-| Speed ladder | The agent can try only one speed step above the fastest speed already certified as safe. |
-| Pain rollback | Level-2 pain cuts the speed to 30% of the current value, lowers the zone speed cap and starts a 3-cycle cooldown. |
-| Safety score | Starts at 0.8. Multiplied by 0.4 after level-2 pain and by 0.8 after level-1 pain. Gains 0.05 after a cycle without level-2 pain. Limited to 0.1–1.0. It scales the pain tolerance used for speed selection. |
-| ROM limit | Starts at 0.8 of the calibrated range (0.6 by default without a profile). Grows by 0.02 per cycle without level-2 pain up to 1.0. |
-| Over-flex guard | A zone ends if the flex reading exceeds the calibrated range by more than 10%. |
-| Calibration validity | Calibration stops if the sensor span or motor travel is implausible. |
-| Stale calibration | A warning appears when the saved calibration is older than 14 days. |
-| Conservative defaults | Without a profile the system uses low speed and a small range. |
-| UI safety | The emergency-stop button is always in the same position and is the largest control. Buttons do not take keyboard focus, so Space cannot press an unrelated button. |
+| 긴급정지 3경로 | Space 키(전역 단축키), 화면 긴급정지 버튼, 로봇 본체의 물리 버튼입니다. 세 경로 중 하나로 긴급정지가 발생하면 모터를 정지하고 2,500 ms 동안 부저를 울립니다. 이후 안전 위치로 복귀하고 세션 보고서를 저장합니다. |
+| 하드웨어 비상정지 | 하드웨어 비상정지 버튼이 눌리면 Arduino가 PC의 명령을 기다리지 않고 서보를 정지시킨 뒤 부저를 울리고 `EVT,ESTOP` 메시지를 전송합니다. 입력은 20 ms 디바운스합니다. |
+| 하트비트 감시 | PC는 0.5초 간격으로 `HB` 메시지를 전송합니다. Arduino가 2,000 ms 동안 메시지를 받지 못하면 서보를 정지하고 부저를 울립니다. 반대로 PC에서도 2초 동안 데이터를 수신하지 못하면 통신 두절로 처리합니다. |
+| 슬루율 제한 | 펌웨어는 10 ms마다 서보 각도를 갱신하며, 설정된 명령 속도를 초과하지 않도록 제어합니다. |
+| 속도 사다리 | 에이전트는 안전성이 확인된 최고 속도를 기준으로, 그보다 한 단계 높은 속도까지만 탐색합니다. |
+| 통증 후 복귀 | 통증 단계 2가 발생하면 속도를 기존의 30%로 낮춥니다. 해당 구간의 속도 상한도 함께 낮추고, 이후 3사이클 동안 쿨다운을 적용합니다. |
+| 안전 점수 | 초기값은 0.8입니다. 통증 단계 2가 발생하면 0.4배, 단계 1이 발생하면 0.8배로 감소합니다. 통증 단계 2 없이 사이클을 완료하면 0.05 증가하며, 값은 0.1~1.0 범위로 제한됩니다. 이 점수는 속도 선택 시 적용하는 통증 허용치를 조절합니다. |
+| 가동범위 제한 | 캘리브레이션으로 측정한 가동범위의 0.8배에서 시작합니다(저장된 프로필이 없으면 0.6배). 통증 단계 2 없이 사이클을 완료할 때마다 0.02씩 증가하며, 최대 1.0까지 확장됩니다. |
+| 과굴곡 보호 | 플렉스 센서 값이 캘리브레이션으로 측정한 범위를 10% 초과하면 해당 구간의 동작을 종료합니다. |
+| 캘리브레이션 검사 | 센서 변화량이나 모터 이동량이 비정상이면 중단합니다. |
+| 오래된 캘리브레이션 | 저장된 값이 14일보다 오래되면 경고합니다. |
+| 보수적 기본값 | 프로필이 없으면 저속·소범위로 시작합니다. |
+| UI 안전 | 긴급정지 버튼은 항상 같은 위치에서 가장 크게 표시됩니다. 모든 버튼이 키보드 포커스를 받지 않으므로 Space 키가 엉뚱한 버튼을 누르지 않습니다. |
 
 ---
 
-## 9. SafeLadderTS Algorithm
+## 9. SafeLadderTS 알고리즘
 
-SafeLadderTS finds the **fastest speed whose pain probability stays below a tolerance**. It learns separately for each context.
+SafeLadderTS의 목표는 **통증 발생 확률이 허용 범위 안에 있는 속도 중 가장 빠른 속도**를 선택하는 것입니다. 각 컨텍스트는 서로 독립적으로 학습합니다.
 
-**Context.** A context is one movement direction (bend or extend) in one zone. There are 2 × 4 = 8 contexts.
+**컨텍스트.** 굴곡 또는 신전 중 한 방향에서 가동범위의 특정 구간을 의미합니다. 방향 2개와 구간 4개를 조합해 총 8개의 컨텍스트를 구성합니다.
 
-**Arms.** Speed candidates are `k0 + {0, 10, 20, 30}` deg/s, capped at 100 deg/s. The base speed `k0` comes from the calibration grip force: `k0 = clip(int(FSR/1023 · 45) + 15, 15, 80)`. A stronger grip starts the ladder at a higher speed. Without a profile `k0 = 15`.
+**팔(arm).** 속도 후보는 `k0 + {0, 10, 20, 30}` deg/s로 구성하며, 최대 속도는 100 deg/s로 제한합니다. 기본 속도 `k0`는 캘리브레이션 단계에서 측정한 악력을 바탕으로 결정합니다. `k0 = clip(int(FSR/1023 · 45) + 15, 15, 80)`입니다. 측정된 악력이 클수록 속도 후보군의 시작점도 높아집니다. 프로필이 없으면 `k0 = 15`입니다.
 
-**State.** For each context `c` and arm `k` the agent keeps a Beta posterior of the pain probability with parameters `(f[c,k], s[c,k])`. The priors are `f0 = 0.5` and `s0 = 1.5`.
+**상태.** 각 컨텍스트 `c`와 속도 후보 `k`에 대해 통증 확률을 나타내는 Beta 사후분포의 파라미터 `(f[c,k], s[c,k])`를 관리합니다. 사전값은 `f0 = 0.5`, `s0 = 1.5`입니다.
 
-**Selection** for context `c`:
+**선택** (컨텍스트 `c`):
 
-1. Pain tolerance: `ε = 0.20 · max(S, 0.3)`, where `S` is the safety score.
-2. Certified arm `k_cert`: the fastest arm with at least 3.0 safe observations and a posterior mean pain of 0.15 or less.
-3. Ladder cap: `k_cap = min(k_cert + 1, k_pain)`, where `k_pain` is the speed cap set by earlier level-2 pain in this context.
-4. Draw `p̃[k] ~ Beta(f[c,k], s[c,k])` for each arm.
-5. Choose the fastest arm `k ≤ k_cap` with `p̃[k] ≤ ε`. If none qualifies, choose the slowest arm.
+1. 통증 허용치: `ε = 0.20 · max(S, 0.3)`으로 계산합니다. 여기서 `S`는 현재 안전 점수입니다.
+2. 검증된 속도 후보 `k_cert`: 안전 관측 횟수가 3.0회 이상이고 사후 평균 통증 확률이 0.15 이하인 후보 중 가장 빠른 속도입니다.
+3. 탐색 상한: `k_cap = min(k_cert + 1, k_pain)`으로 설정합니다. `k_pain`은 해당 컨텍스트에서 이전에 통증 단계 2가 발생했을 때 정해진 속도 상한입니다.
+4. 각 속도 후보에서 `p̃[k] ~ Beta(f[c,k], s[c,k])`를 샘플링합니다.
+5. `k ≤ k_cap`이면서 `p̃[k] ≤ ε`를 만족하는 후보 중 가장 빠른 속도를 선택합니다. 조건을 만족하는 후보가 없으면 가장 느린 속도를 선택합니다.
 
-**Update** after an outcome `y ∈ {0, 1, 2}` on arm `k`:
+**갱신** (팔 `k`의 결과 `y ∈ {0, 1, 2}`):
 
-- `y = 0`: `s[c,k] += 1`, and `s[c,j] += 0.5` for slower arms `j < k`.
-- `y > 0`: `f[c,k] += w`, and `f[c,j] += 0.5·w` for faster arms `j > k`, with `w = 1` for discomfort and `w = 2` for pain.
-- `y = 2`: set `k_pain = k − 1` and start a 3-cycle cooldown.
+- `y = 0`: `s[c,k] += 1`, 더 느린 팔 `j < k`는 `s[c,j] += 0.5`.
+- `y > 0`: `f[c,k] += w`, 더 빠른 팔 `j > k`는 `f[c,j] += 0.5·w`. 뻐근함은 `w = 1`, 통증은 `w = 2`.
+- `y = 2`: `k_pain = k − 1`로 낮추고 3사이클 쿨다운을 시작합니다.
 
-**End of cycle.** The speed cap rises by one step when its cooldown ends. All evidence is discounted toward the prior by `γ = 0.99` so that old observations fade as the patient changes.
+**사이클 종료.** 쿨다운이 끝나면 속도 상한이 한 단계 올라갑니다. 모든 증거는 `γ = 0.99`로 사전값 쪽으로 할인되어, 환자 상태가 바뀌면 오래된 관측이 서서히 잊힙니다.
 
-**Variable table**
+**변수 표**
 
-| Symbol | Meaning | Unit |
+| 기호 | 의미 | 단위 |
 |---|---|---|
-| `c` | Context (direction × zone) | none |
-| `k` | Speed arm index | none |
-| `s`, `f` | Safe and pain evidence for the Beta posterior | counts |
-| `S` | Safety score | none, 0.1–1.0 |
-| `ε` | Pain-probability tolerance | probability |
-| `γ` | Per-cycle discount factor | none |
+| `c` | 컨텍스트 (방향 × 구간) | 없음 |
+| `k` | 속도 팔 인덱스 | 없음 |
+| `s`, `f` | Beta 사후분포의 안전·통증 증거 | 횟수 |
+| `S` | 안전 점수 | 없음, 0.1~1.0 |
+| `ε` | 통증 확률 허용치 | 확률 |
+| `γ` | 사이클당 할인율 | 없음 |
 
-The monotone propagation assumes that pain risk never decreases with speed. That is reasonable for passive finger motion but it is an assumption.
+단조 전파는 속도가 높아질수록 통증 위험이 낮아지지는 않는다는 가정에 기반합니다. 수동적 손가락 운동에 적용할 수 있는 가정이지만, 실험적으로 검증된 사실은 아닙니다.
 
-`LinUCBAgent` in `agent.py` is the baseline from the earlier project. It is kept only for benchmarking.
+`agent.py`의 `LinUCBAgent`는 이전 프로젝트에서 사용한 알고리즘으로, 현재 벤치마크에서 비교 기준선으로만 활용합니다.
 
 ---
 
-## 10. Serial Protocol and Firmware
+## 10. 시리얼 프로토콜과 펌웨어
 
-Serial link: 115,200 bps, ASCII, one command per line. The default port is `COM3`. If it is not found the software searches for an Arduino automatically (`serial.auto_detect`).
+PC와 Arduino는 115,200 bps의 ASCII 시리얼 통신을 사용하며, 한 줄에 하나의 명령을 주고받습니다. 기본 포트는 `COM3`이고, 포트를 찾지 못하면 `serial.auto_detect` 설정에 따라 Arduino를 자동으로 탐색합니다.
 
-**PC to Arduino**
+**PC → Arduino**
 
-| Command | Meaning |
+| 명령 | 의미 |
 |---|---|
-| `M<n>,<angle>,<speed>` | Move servo `n` to `angle` [deg] at `speed` [deg/s]. |
-| `STOP` | Hold all servos at the current position. |
-| `BUZ,<ms>` | Sound a beep pattern for `ms` milliseconds. |
-| `HB` | Heartbeat. Any received command also resets the watchdog. |
+| `M<n>,<angle>,<speed>` | n번 서보를 `angle` [deg]로 `speed` [deg/s]에 맞춰 이동합니다. |
+| `STOP` | 모든 서보를 현재 위치에서 멈춥니다. |
+| `BUZ,<ms>` | `ms` 밀리초 동안 부저 경보 패턴을 울립니다. |
+| `HB` | 하트비트. 다른 명령을 받아도 감시 타이머가 초기화됩니다. |
 
-**Arduino to PC**
+**Arduino → PC**
 
-| Message | Meaning |
+| 메시지 | 의미 |
 |---|---|
-| `DATA,<flex>,<fsr>` | Raw ADC readings every 50 ms. |
-| `EVT,ESTOP` | The hardware e-stop button is pressed. Repeated while it is held. |
+| `DATA,<flex>,<fsr>` | 50 ms마다 ADC 원시값을 보냅니다. |
+| `EVT,ESTOP` | 하드웨어 비상정지 버튼이 눌렸습니다. 누르는 동안 반복해서 보냅니다. |
 
-**Firmware pin assignment — assumed values.** Check them against your real wiring before powering the robot.
+**펌웨어 핀 배치 — 기본 가정값입니다.** 실제 로봇에 전원을 연결하기 전에 반드시 현재 배선과 일치하는지 확인하세요.
 
-| Function | Pin |
+| 기능 | 핀 |
 |---|---|
-| Servo 1 (flexion) | D9 |
-| Servo 2 (extension) | D10 |
-| Flex sensor | A0 |
+| 서보 1 (굴곡) | D9 |
+| 서보 2 (신전) | D10 |
+| 플렉스 센서 | A0 |
 | FSR | A1 |
-| Emergency-stop button | D2, between the pin and GND, `INPUT_PULLUP`, pressed = LOW |
-| Buzzer | D8 |
+| 비상정지 버튼 | D2와 GND 사이, `INPUT_PULLUP`, 눌림 = LOW |
+| 부저 | D8 |
 
-Initial servo angles must match `m1_init = 0` and `m2_init = 180` in `config.py`. To merge the safety functions into an existing sketch, copy the e-stop, buzzer and heartbeat sections into your own code.
+서보 초기 각도는 `config.py`의 `m1_init = 0`, `m2_init = 180`과 같아야 합니다. 기존 Arduino 스케치에 안전 기능을 추가하려면 비상정지, 부저, 하트비트 관련 코드를 통합하면 됩니다.
 
 ---
 
-## 11. Configuration Reference
+## 11. 설정값 안내
 
-All settings are dataclasses in `config.py`.
+모든 설정값은 `config.py`에 정의된 dataclass에서 관리합니다.
 
-| Group | Parameter | Default | Meaning |
+| 그룹 | 파라미터 | 기본값 | 의미 |
 |---|---|---|---|
-| Serial | `port`, `baud` | `COM3`, 115200 | Link settings. |
-| Serial | `heartbeat_period_s` | 0.5 | PC heartbeat period. |
-| Serial | `comm_timeout_s` | 2.0 | Silence that counts as communication loss. |
-| Motion | `m1_init`, `m2_init` | 0, 180 | Home angles [deg]. |
-| Motion | `cal_speed` | 20 | Calibration speed [deg/s]. |
-| Motion | `return_speed` | 60 | Normal return speed [deg/s]. |
-| Motion | `speed_min`, `speed_max` | 15, 100 | Speed range [deg/s]. |
-| Motion | `arm_offsets` | 0, 10, 20, 30 | Arm speeds relative to the base speed. |
-| Therapy | `zones` | 4 | Zones per phase. |
-| Therapy | `session_duration_s` | 1,800 | Session length. |
-| Therapy | `rom_start`, `rom_max`, `rom_step` | 0.80, 1.00, 0.02 | ROM schedule. |
-| Therapy | `safety_init` | 0.8 | Initial safety score. |
-| Therapy | `safety_pain2_factor`, `safety_pain1_factor` | 0.4, 0.8 | Score multipliers after pain. |
-| Therapy | `safety_recover` | 0.05 | Score gain per cycle without level-2 pain. |
-| Therapy | `rollback_speed_ratio` | 0.3 | Speed after level-2 pain. |
-| Therapy | `warmup_cycles`, `warmup_max_arm` | 2, 1 | Quick-start warm-up. |
-| Therapy | `default_m1_travel`, `default_m2_travel` | 45, 45 | Defaults without a profile [deg]. |
-| Agent | `pain_tolerance` | 0.20 | Base tolerance `ε`. |
-| Agent | `prior_safe`, `prior_pain` | 1.5, 0.5 | Beta priors. |
-| Agent | `certify_min_safe`, `certify_max_mean_pain` | 3.0, 0.15 | Certification thresholds. |
-| Agent | `propagate` | 0.5 | Monotone propagation weight. |
-| Agent | `cooldown_cycles` | 3 | Cycles before a lowered cap is relaxed. |
-| Agent | `discount` | 0.99 | Per-cycle evidence discount. |
-| Sim | `time_scale`, `auto_confirm`, `auto_patient`, `seed` | 8, False, True, 7 | Simulation controls. |
-| General | `profile_max_age_days` | 14 | Stale-calibration warning. |
+| Serial | `port`, `baud` | `COM3`, 115200 | 링크 설정. |
+| Serial | `heartbeat_period_s` | 0.5 | PC 하트비트 주기. |
+| Serial | `comm_timeout_s` | 2.0 | 통신 두절로 보는 무수신 시간. |
+| Motion | `m1_init`, `m2_init` | 0, 180 | 홈 각도 [deg]. |
+| Motion | `cal_speed` | 20 | 캘리브레이션 속도 [deg/s]. |
+| Motion | `return_speed` | 60 | 일반 복귀 속도 [deg/s]. |
+| Motion | `speed_min`, `speed_max` | 15, 100 | 속도 범위 [deg/s]. |
+| Motion | `arm_offsets` | 0, 10, 20, 30 | 기본 속도 대비 팔 속도 차이. |
+| Therapy | `zones` | 4 | 단계당 구간 수. |
+| Therapy | `session_duration_s` | 1,800 | 세션 길이. |
+| Therapy | `rom_start`, `rom_max`, `rom_step` | 0.80, 1.00, 0.02 | 가동범위 계획. |
+| Therapy | `safety_init` | 0.8 | 안전 점수 초기값. |
+| Therapy | `safety_pain2_factor`, `safety_pain1_factor` | 0.4, 0.8 | 통증 후 점수 배율. |
+| Therapy | `safety_recover` | 0.05 | 통증 2 없는 사이클의 점수 증가. |
+| Therapy | `rollback_speed_ratio` | 0.3 | 통증 2 후 속도 비율. |
+| Therapy | `warmup_cycles`, `warmup_max_arm` | 2, 1 | 빠른 시작 워밍업. |
+| Therapy | `default_m1_travel`, `default_m2_travel` | 45, 45 | 프로필이 없을 때 기본값 [deg]. |
+| Agent | `pain_tolerance` | 0.20 | 기본 허용치 `ε`. |
+| Agent | `prior_safe`, `prior_pain` | 1.5, 0.5 | Beta 사전값. |
+| Agent | `certify_min_safe`, `certify_max_mean_pain` | 3.0, 0.15 | 검증 기준. |
+| Agent | `propagate` | 0.5 | 단조 전파 가중치. |
+| Agent | `cooldown_cycles` | 3 | 낮춘 상한을 풀기까지의 사이클 수. |
+| Agent | `discount` | 0.99 | 사이클당 증거 할인. |
+| Sim | `time_scale`, `auto_confirm`, `auto_patient`, `seed` | 8, False, True, 7 | 시뮬레이션 제어. |
+| General | `profile_max_age_days` | 14 | 오래된 캘리브레이션 경고. |
 
 ---
 
-## 12. Outputs and Data Files
+## 12. 결과물 및 데이터 파일
 
-After each session:
+세션이 종료되면 다음 파일이 생성됩니다.
 
 ```
-data/reports/<patient>/<timestamp>/
-├── dashboard.png       9-panel analysis figure
-├── rehab_report.xlsx   Sheets: Summary, Cycles, Decisions, PainEvents, PainProb_Final, AgentHistory, Steps
-└── summary.json        Key metrics
+data/reports/<환자>/<시각>/
+├── dashboard.png       9패널 분석 그림
+├── rehab_report.xlsx   시트: Summary, Cycles, Decisions, PainEvents, PainProb_Final, AgentHistory, Steps
+└── summary.json        주요 성능 지표
 ```
 
-**Dashboard panels**
+**대시보드 패널**
 
-| Row | Panels |
+| 행 | 패널 |
 |---|---|
-| 1 | A. ROM and safety score over cycles. B. Selected speed per zone and cycle. C. Posterior pain probability per zone and speed. |
-| 2 | D. Cumulative pain and safe passes. E. Learning curve (speed and uncertainty). F. Exploration versus exploitation ratio. |
-| 3 | G. Where pain occurred. H. Zone outcome ratios. I. Key metrics. |
+| 1 | A. 가동범위와 안전 점수 추이. B. 구간별 선택 속도(사이클별). C. 구간×속도별 통증 확률 사후분포. |
+| 2 | D. 누적 통증과 안전 통과. E. 학습 곡선(속도와 불확실성). F. 탐색 대 활용 비율. |
+| 3 | G. 통증 발생 위치. H. 구간 결과 비율. I. 주요 성능 지표. |
 
-`summary.json` contains the patient ID, mode, duration, total and successful cycles, level-1 and level-2 pain counts, mean speed, final ROM, final safety score and the end reason (finished, max cycles or emergency-stop source).
+`summary.json`에는 환자 ID와 실행 모드, 세션 소요 시간, 전체 사이클 및 성공 사이클 수, 통증 단계별 발생 횟수, 평균 속도, 최종 가동범위, 최종 안전 점수, 종료 사유(정상 종료·최대 사이클 도달·비상정지)가 기록됩니다.
 
-**Patient profile** `data/profiles/<patient>.json` stores motor travel limits, sensor baselines, grip strength, speed arms, safety score, ROM ratio, the agent posteriors and recent session history. The next quick-start session continues from it.
+**환자 프로필** `data/profiles/<환자>.json`에는 모터 한계각, 센서 기준값, 악력, 속도 후보, 안전 점수, 가동범위 비율, 에이전트 사후분포, 최근 세션 이력이 저장됩니다. 이후 빠른 시작 모드에서는 저장된 프로필을 불러와 이전 세션의 상태를 이어서 사용합니다.
 
 ---
 
-## 13. Benchmark
+## 13. 벤치마크
 
-`benchmark.py` compares policies on a simulated patient without any hardware.
+`benchmark.py`는 실제 하드웨어 없이 가상 환자 모델을 사용해 여러 제어 정책의 성능을 비교합니다.
 
-**Setup**
+**설정**
 
-- Patient speed tolerances of 40, 55 and 70 deg/s. The tolerance falls by up to 40% toward the ends of the range.
-- Pain hazard `h = h0 · σ((v − v_tol) / β)` with `h0 = 3.0` per second and `β = 4.0` deg/s.
-- Arms 37, 47, 57 and 67 deg/s. 4 zones per phase. 40 cycles per run.
-- 100 seeds × 3 tolerances = 300 runs per policy.
-- Regret `= Σ [ max(0, v* − v) / v* + 0.5·1(y=1) + 2.0·1(y=2) ]`, where `v*` is the oracle speed.
+- 가상 환자의 속도 허용치는 40, 55, 70 deg/s로 설정합니다. 가동범위의 양 끝에서는 허용치가 최대 40% 감소합니다.
+- 통증 위험률은 `h = h0 · σ((v − v_tol) / β)`이며 `h0 = 3.0`/s, `β = 4.0` deg/s입니다.
+- 팔은 37, 47, 57, 67 deg/s. 단계당 4개 구간. 실행당 40사이클.
+- 시드 100개와 허용치 3개 조합을 사용해 정책별로 총 300회 실행합니다.
+- 리그렛 `= Σ [ max(0, v* − v) / v* + 0.5·1(y=1) + 2.0·1(y=2) ]`. `v*`는 오라클 속도입니다.
 
-**Policies:** SafeLadderTS, LinUCB, SafeLadderTS without the ladder, SafeLadderTS without monotone propagation, and fixed low, mid and high speed.
+**비교 정책:** SafeLadderTS, LinUCB, 사다리 제거 SafeLadderTS, 단조 전파 제거 SafeLadderTS, 고정 저속·중속·고속.
 
-**Main results (simulation only)**
+**주요 결과(시뮬레이션)**
 
-| Policy | Level-2 pain per run | Std. dev. | Speed ratio to oracle |
+| 정책 | 실행당 통증 2 횟수 | 표준편차 | 오라클 대비 속도 |
 |---|---|---|---|
 | SafeLadderTS | 7.5 | 10.3 | 0.94 |
 | LinUCB | 20.6 | 29.4 | 1.03 |
-| SafeLadderTS without ladder | 11.9 | — | — |
-| SafeLadderTS without propagation | 7.7 | — | — |
-| Fixed low speed | 7.2 | — | 0.88 |
-| Fixed mid speed | 25.1 | — | — |
-| Fixed high speed | 62.2 | — | — |
+| 사다리 제거 SafeLadderTS | 11.9 | — | — |
+| 단조 전파 제거 SafeLadderTS | 7.7 | — | — |
+| 고정 저속 | 7.2 | — | 0.88 |
+| 고정 중속 | 25.1 | — | — |
+| 고정 고속 | 62.2 | — | — |
 
-- SafeLadderTS reduces level-2 pain by 13.1 events (64%) against LinUCB. The 95% bootstrap CI of the difference is −16.6 to −9.6.
-- A speed ratio above 1.0 means the policy moved faster than the patient tolerates. LinUCB averages 1.03.
-- Without the ladder, pain in cycles 1–10 rises from 1.86 to 5.47 events. The ladder is what protects the early cycles.
-- Without monotone propagation the result barely changes. The simulation does not show a benefit from propagation.
+- SafeLadderTS는 LinUCB와 비교해 실행당 통증 단계 2의 발생 횟수를 평균 13.1회(64%) 줄였습니다. 차이의 95% 부트스트랩 신뢰구간은 −16.6~−9.6입니다.
+- 속도 비율이 1.0보다 크다는 것은 환자의 설정된 속도 허용치를 초과해 구동했음을 의미합니다. LinUCB는 평균 1.03입니다.
+- 속도 사다리 기능을 제거하면 초기 1~10사이클 동안 통증 발생 횟수가 1.86회에서 5.47회로 증가합니다. 이는 초기 탐색 단계에서 속도 사다리가 안전성 확보에 기여함을 보여줍니다.
+- 단조 전파 기능을 제거한 경우에도 결과에는 큰 차이가 없었습니다. 따라서 현재 시뮬레이션 설정에서는 단조 전파의 뚜렷한 성능상 이점을 확인하지 못했습니다.
 
-**Per tolerance, level-2 pain per run**
+**허용치별 실행당 통증 2 횟수**
 
-| Tolerance | SafeLadderTS | LinUCB |
+| 허용치 | SafeLadderTS | LinUCB |
 |---|---|---|
 | 40 deg/s | 21.4 | 58.3 |
 | 55 deg/s | 0.7 | 3.6 |
 | 70 deg/s | 0.4 | 0.0 |
 
-Outputs go to `data/benchmark/benchmark.json` and `benchmark.png`. Running the benchmark overwrites them. The reported numbers use `--seeds 100`.
+벤치마크 결과는 `data/benchmark/benchmark.json`과 `benchmark.png`에 저장됩니다. 벤치마크를 다시 실행하면 기존 파일을 덮어씁니다. 위 결과는 `--seeds 100` 옵션으로 실행한 실험을 기준으로 합니다.
 
 ---
 
-## 14. Limitations
+## 14. 현재 한계
 
-1. **Simulation only.** No patient has used the system.
-2. **Favorable patient model.** The simulated patient and SafeLadderTS both assume that pain risk rises monotonically with speed.
-3. **Floor effect at 40 deg/s.** The slowest arm (37 deg/s) already exceeds the tolerance near the range ends, so every policy keeps about 21 pain events. A lower speed floor is needed.
-4. **Exploration cost at 70 deg/s.** SafeLadderTS pays 0.4 pain events to explore. LinUCB and the fixed low speed pay none there.
-5. **Single flex sensor.** Angle error depends on glove fit and sensor placement. A second sensor is not implemented.
-6. **Pain button dependency.** Patients who cannot press the button are not supported. An EMG-assisted signal is a possible future addition.
-7. **Assumed firmware pins.** They must be checked against the real wiring.
-8. **Not a medical device.** Clinical use needs ethics review, clinical evaluation and medical-device approval.
+1. **시뮬레이션 단계입니다.** 실제 환자를 대상으로 사용하거나 평가한 이력은 없습니다.
+2. **단순화된 환자 모델.** 가상 환자 모델과 SafeLadderTS 모두 속도가 증가할수록 통증 위험이 감소하지 않는다고 가정합니다.
+3. **40 deg/s 허용치에서의 하한 문제.** 가장 느린 속도 후보(37 deg/s)도 가동범위 양 끝에서는 환자의 허용치를 초과합니다. 이 때문에 모든 정책에서 통증이 약 21회 발생합니다. 해당 조건을 개선하려면 속도 하한을 더 낮출 필요가 있습니다.
+4. **70 deg/s 허용치에서의 탐색 비용.** SafeLadderTS는 탐색 과정에서 평균 0.4회의 통증을 유발했습니다. 반면 동일 조건에서 LinUCB와 고정 저속 정책은 통증이 발생하지 않았습니다.
+5. **단일 플렉스 센서 사용.** 측정 각도가 장갑 착용 상태와 센서 부착 위치에 영향을 받을 수 있습니다. 현재 보조 각도 센서는 구현하지 않았습니다.
+6. **통증 버튼에 대한 의존성.** 버튼을 직접 누르기 어려운 사용자는 현재 시스템을 이용하기 어렵습니다. 향후 근전도(EMG) 등의 보조 신호를 추가하는 방안을 고려할 수 있습니다.
+7. **펌웨어 핀 배치 확인 필요.** 문서에 기재된 핀 번호는 가정값이므로 실제 배선과 반드시 대조해야 합니다.
+8. **의료기기가 아닙니다.** 실제 임상에 적용하려면 관련 윤리 심의와 임상 평가를 거쳐야 하며, 필요한 의료기기 인허가 절차도 충족해야 합니다.
 
 ---
 
-## 15. Roadmap
+## 15. 향후 개발 계획
 
-1. Measure the prototype: e-stop delay, communication-loss stop time and angle repeatability.
-2. Lower the speed floor for patients with low tolerance.
-3. Add a second angle sensor to reduce angle error.
-4. Pilot at one or two community sites before wider deployment.
+1. 시제품 성능 측정: 비상정지 응답 시간, 통신 두절 시 정지 시간, 관절 각도 재현성 평가.
+2. 속도 허용치가 낮은 사용자를 고려해 최소 속도 후보 조정.
+3. 각도 측정 오차를 줄이기 위한 보조 센서 추가.
+4. 적용 범위를 확대하기에 앞서 지역 거점 1~2곳에서 시범 운영 검토.
