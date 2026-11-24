@@ -3,7 +3,7 @@
 # Re:Hand — Safety-Constrained Control Software for a Wearable Finger Rehabilitation Robot
 
 Re:Hand is the control software for a low-cost, wire-driven soft-glove finger rehabilitation robot.
-It was developed on the basis of the **H.O.P.E Hand** project, and the hardware configuration is unchanged. Two servo motors pull UHMWPE wires. A flex sensor and an FSR grip module take the measurements. An Arduino Nano runs the control loop. The key change is the control algorithm. The earlier LinUCB-based speed selector is replaced by **SafeLadderTS**, a Thompson sampling algorithm with a safety constraint. It treats pain as a safety condition that limits speed selection, not as a simple reward signal.
+Two servo motors pull UHMWPE wires. A flex sensor and an FSR grip module take the measurements. An Arduino Nano runs the control loop. The key change is the control algorithm. The earlier LinUCB-based speed selector is replaced by **SafeLadderTS**, a Thompson sampling algorithm with a safety constraint. It treats pain as a safety condition that limits speed selection, not as a simple reward signal.
 
 This software was developed as part of the Kwangwoon University Regional Capstone Design program. The target region is Nowon-gu, Seoul.
 
